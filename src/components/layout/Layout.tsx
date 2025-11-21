@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Home, PlusCircle, Dumbbell, Calendar } from 'lucide-react';
+import { Menu, Home, PlusCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
@@ -42,8 +42,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${location.pathname === item.path
-                                    ? 'bg-primary/20 text-primary'
-                                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                                ? 'bg-primary/20 text-primary'
+                                : 'text-gray-400 hover:bg-white/5 hover:text-white'
                                 }`}
                         >
                             <item.icon className="w-5 h-5" />

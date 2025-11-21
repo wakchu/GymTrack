@@ -1,12 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard';
 
+import { CreateRoutine } from './pages/CreateRoutine';
+
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        {/* Add more routes here */}
+        <Route path="/create" element={<CreateRoutine />} />
       </Routes>
     </Router>
   );
