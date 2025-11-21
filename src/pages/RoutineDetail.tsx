@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { ProgressChart } from '../components/ui/ProgressChart';
 
 export const RoutineDetail: React.FC = () => {
     const navigate = useNavigate();
@@ -42,33 +43,20 @@ export const RoutineDetail: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Simple SVG Chart Placeholder */}
-                    <div className="h-32 w-full">
-                        <svg viewBox="0 0 400 150" className="w-full h-full overflow-visible">
-                            <defs>
-                                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#39FF14" stopOpacity="0.3" />
-                                    <stop offset="100%" stopColor="#39FF14" stopOpacity="0" />
-                                </linearGradient>
-                            </defs>
-                            <path
-                                d="M0 100 C 50 100, 50 40, 100 40 C 150 40, 150 80, 200 80 C 250 80, 250 20, 300 20 C 350 20, 350 60, 400 60 V 150 H 0 Z"
-                                fill="url(#chartGradient)"
-                            />
-                            <path
-                                d="M0 100 C 50 100, 50 40, 100 40 C 150 40, 150 80, 200 80 C 250 80, 250 20, 300 20 C 350 20, 350 60, 400 60"
-                                fill="none"
-                                stroke="#39FF14"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                            />
-                        </svg>
-                    </div>
+                    <ProgressChart
+                        data={[
+                            { name: 'Jun', value: 135 },
+                            { name: 'Jul', value: 142 },
+                            { name: 'Aug', value: 150 },
+                            { name: 'Sep', value: 148 },
+                            { name: 'Oct', value: 155 },
+                            { name: 'Nov', value: 162 },
+                        ]}
+                    />
 
                     <div className="flex justify-between mt-4 text-primary/70 text-xs font-bold uppercase tracking-wider">
                         <span>Jun</span>
-                        <span>Jul</span>
-                        <span>Aug</span>
+                        <span>Nov</span>
                     </div>
                 </Card>
 

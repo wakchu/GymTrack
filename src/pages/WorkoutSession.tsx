@@ -10,16 +10,19 @@ export const WorkoutSession: React.FC = () => {
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
-        if (isResting && timeLeft > 0) {
+        if (isResting) {
             interval = setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
+                setTimeLeft((prev) => {
+                    if (prev <= 1) {
+                        setIsResting(false);
+                        return 90;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
-        } else if (timeLeft === 0) {
-            setIsResting(false);
-            setTimeLeft(90); // Reset for next time
         }
         return () => clearInterval(interval);
-    }, [isResting, timeLeft]);
+    }, [isResting]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -34,6 +37,7 @@ export const WorkoutSession: React.FC = () => {
 
     const handleSkipRest = () => {
         setIsResting(false);
+        setTimeLeft(90);
     };
 
     return (

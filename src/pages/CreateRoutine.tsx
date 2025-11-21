@@ -5,15 +5,12 @@ import { Layout } from '../components/layout/Layout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
-interface Exercise {
-    id: string;
-    name: string;
-    sets: string;
-    reps: string;
-}
+import { useRoutines } from '../context/RoutineContext';
+import type { Exercise } from '../types';
 
 export const CreateRoutine: React.FC = () => {
     const navigate = useNavigate();
+    const { addRoutine } = useRoutines();
     const [routineName, setRoutineName] = useState('');
     const [exercises, setExercises] = useState<Exercise[]>([
         { id: '1', name: '', sets: '', reps: '' }
@@ -34,6 +31,23 @@ export const CreateRoutine: React.FC = () => {
         setExercises(exercises.map(ex =>
             ex.id === id ? { ...ex, [field]: value } : ex
         ));
+    };
+
+    const handleSave = () => {
+        if (!routineName.trim()) return;
+
+        const newRoutine = {
+            id: crypto.randomUUID(),
+            name: routineName,
+            exercises,
+            details: `${exercises.length} Exercises`,
+            icon: 'dumbbell',
+            color: 'text-primary',
+            bgColor: 'bg-primary/20',
+        };
+
+        addRoutine(newRoutine);
+        navigate('/');
     };
 
     return (
@@ -112,7 +126,7 @@ export const CreateRoutine: React.FC = () => {
                 </div>
 
                 <div className="sticky bottom-0 bg-background-dark p-4 -mx-4 border-t border-white/10 md:static md:border-0 md:p-0 md:mx-0">
-                    <Button className="w-full py-6 text-lg text-black" onClick={() => console.log({ routineName, exercises })}>
+                    <Button className="w-full py-6 text-lg text-black" onClick={handleSave}>
                         Save Routine
                     </Button>
                 </div>
