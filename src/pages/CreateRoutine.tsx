@@ -13,13 +13,13 @@ export const CreateRoutine: React.FC = () => {
     const { addRoutine } = useRoutines();
     const [routineName, setRoutineName] = useState('');
     const [exercises, setExercises] = useState<Exercise[]>([
-        { id: '1', name: '', sets: '', reps: '' }
+        { id: '1', name: '', sets: '', reps: [] }
     ]);
 
     const addExercise = () => {
         setExercises([
             ...exercises,
-            { id: crypto.randomUUID(), name: '', sets: '', reps: '' }
+            { id: crypto.randomUUID(), name: '', sets: '', reps: [] }
         ]);
     };
 
@@ -27,10 +27,33 @@ export const CreateRoutine: React.FC = () => {
         setExercises(exercises.filter(ex => ex.id !== id));
     };
 
-    const updateExercise = (id: string, field: keyof Exercise, value: string) => {
-        setExercises(exercises.map(ex =>
-            ex.id === id ? { ...ex, [field]: value } : ex
-        ));
+    const updateExercise = (id: string, field: 'name' | 'sets', value: string) => {
+        setExercises(prevExercises =>
+            prevExercises.map(ex => {
+                if (ex.id === id) {
+                    if (field === 'sets') {
+                        const setCount = Number(value) || 0;
+                        const newReps = new Array(setCount).fill('').map((_, i) => ex.reps[i] || '');
+                        return { ...ex, sets: value, reps: newReps };
+                    }
+                    return { ...ex, [field]: value };
+                }
+                return ex;
+            })
+        );
+    };
+
+    const updateRep = (exerciseId: string, repIndex: number, value: string) => {
+        setExercises(prevExercises =>
+            prevExercises.map(ex => {
+                if (ex.id === exerciseId) {
+                    const newReps = [...ex.reps];
+                    newReps[repIndex] = value;
+                    return { ...ex, reps: newReps };
+                }
+                return ex;
+            })
+        );
     };
 
     const handleSave = () => {
@@ -95,7 +118,7 @@ export const CreateRoutine: React.FC = () => {
                             </div>
 
                             <div className="flex gap-4">
-                                <div className="flex-1">
+                                <div className="w-1/3">
                                     <Input
                                         label="Sets"
                                         placeholder="4"
@@ -103,14 +126,18 @@ export const CreateRoutine: React.FC = () => {
                                         onChange={(e) => updateExercise(exercise.id, 'sets', e.target.value)}
                                     />
                                 </div>
-                                <div className="flex-1">
-                                    <Input
-                                        label="Reps"
-                                        placeholder="12"
-                                        value={exercise.reps}
-                                        onChange={(e) => updateExercise(exercise.id, 'reps', e.target.value)}
-                                    />
-                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                {exercise.reps.map((rep, index) => (
+                                    <div key={index} className="flex-1 min-w-[80px]">
+                                        <Input
+                                            label={`Set ${index + 1}`}
+                                            placeholder="Reps"
+                                            value={rep}
+                                            onChange={(e) => updateRep(exercise.id, index, e.target.value)}
+                                        />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ))}

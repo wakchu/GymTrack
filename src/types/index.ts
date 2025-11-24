@@ -2,7 +2,7 @@ export interface Exercise {
     id: string;
     name: string;
     sets: string;
-    reps: string;
+    reps: string[];
 }
 
 export interface Routine {
