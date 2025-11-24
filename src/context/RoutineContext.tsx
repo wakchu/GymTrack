@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Routine } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface RoutineContextType {
     routines: Routine[];
-    addRoutine: (routine: Routine) => void;
+    addRoutine: (routine: Routine) => Promise<void>;
+    loading: boolean;
 }
 
 const RoutineContext = createContext<RoutineContextType | undefined>(undefined);
@@ -17,52 +19,82 @@ export const useRoutines = () => {
 };
 
 export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [routines, setRoutines] = useState<Routine[]>(() => {
-        const saved = localStorage.getItem('gym-tracker-routines');
-        if (saved) {
-            return JSON.parse(saved);
-        }
-        return [
-            {
-                id: '1',
-                name: 'Push Day',
-                details: '5 Exercises',
-                exercises: [],
-                icon: 'dumbbell',
-                color: 'text-primary',
-                bgColor: 'bg-primary/20',
-            },
-            {
-                id: '2',
-                name: 'Legs',
-                details: '6 Exercises',
-                exercises: [],
-                icon: 'dumbbell',
-                color: 'text-primary',
-                bgColor: 'bg-primary/20',
-            },
-            {
-                id: '3',
-                name: 'Cardio Blast',
-                details: '45 Mins',
-                exercises: [],
-                icon: 'person-standing',
-                color: 'text-primary',
-                bgColor: 'bg-primary/20',
-            },
-        ];
-    });
+    const [routines, setRoutines] = useState<Routine[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        localStorage.setItem('gym-tracker-routines', JSON.stringify(routines));
-    }, [routines]);
+        fetchRoutines();
+    }, []);
 
-    const addRoutine = (routine: Routine) => {
-        setRoutines((prev) => [...prev, routine]);
+    const fetchRoutines = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('routines')
+                .select('*, exercises(*)');
+
+            if (error) throw error;
+
+            if (data) {
+                // Map DB snake_case to camelCase if needed, but here we kept names mostly same.
+                // However, DB 'bg_color' needs to map to 'bgColor'.
+                const formattedRoutines: Routine[] = data.map((r: any) => ({
+                    ...r,
+                    bgColor: r.bg_color,
+                    exercises: r.exercises.sort((a: any, b: any) => a.order_index - b.order_index)
+                }));
+                setRoutines(formattedRoutines);
+            }
+        } catch (error) {
+            console.error('Error fetching routines:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const addRoutine = async (routine: Routine) => {
+        try {
+            // 1. Insert Routine
+            const { data: routineData, error: routineError } = await supabase
+                .from('routines')
+                .insert({
+                    name: routine.name,
+                    details: routine.details,
+                    icon: routine.icon,
+                    color: routine.color,
+                    bg_color: routine.bgColor
+                })
+                .select()
+                .single();
+
+            if (routineError) throw routineError;
+
+            if (routine.exercises.length > 0) {
+                // 2. Insert Exercises
+                const exercisesToInsert = routine.exercises.map((ex, index) => ({
+                    routine_id: routineData.id,
+                    name: ex.name,
+                    sets: ex.sets,
+                    reps: ex.reps,
+                    order_index: index
+                }));
+
+                const { error: exercisesError } = await supabase
+                    .from('exercises')
+                    .insert(exercisesToInsert);
+
+                if (exercisesError) throw exercisesError;
+            }
+
+            // Refresh local state
+            await fetchRoutines();
+        } catch (error) {
+            console.error('Error adding routine:', error);
+            alert('Failed to save routine');
+        }
     };
 
     return (
-        <RoutineContext.Provider value={{ routines, addRoutine }}>
+        <RoutineContext.Provider value={{ routines, addRoutine, loading }}>
             {children}
         </RoutineContext.Provider>
     );
