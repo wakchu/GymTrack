@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 
 import { CreateRoutine } from './pages/CreateRoutine';
 import { RoutineDetail } from './pages/RoutineDetail';
+import { EditRoutine } from './pages/EditRoutine';
 import { ExerciseDetail } from './pages/ExerciseDetail';
 import { WorkoutSession } from './pages/WorkoutSession';
 
@@ -36,6 +37,7 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/create" element={<CreateRoutine />} />
         <Route path="/routine/:id" element={<RoutineDetail />} />
+        <Route path="/routine/:id/edit" element={<EditRoutine />} />
         <Route path="/exercise/:id" element={<ExerciseDetail />} />
         <Route path="/workout/:id" element={<WorkoutSession />} />
       </Routes>

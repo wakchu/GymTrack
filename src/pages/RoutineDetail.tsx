@@ -1,23 +1,28 @@
 import React from 'react';
-import { ArrowLeft, MoreVertical, Dumbbell, ChevronRight, Play } from 'lucide-react';
+import { ArrowLeft, Dumbbell, ChevronRight, Play, Edit } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ProgressChart } from '../components/ui/ProgressChart';
+import { useRoutines } from '../context/RoutineContext';
 
 export const RoutineDetail: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams();
 
-    // Mock data - in a real app this would come from an API/store based on ID
-    const routineName = "Push Day";
-    const exercises = [
-        { id: 1, name: 'Bench Press', details: '3 Sets x 10 Reps' },
-        { id: 2, name: 'Incline Dumbbell Fly', details: '4 Sets x 12 Reps' },
-        { id: 3, name: 'Overhead Press', details: '3 Sets x 8 Reps' },
-        { id: 4, name: 'Tricep Pushdown', details: '3 Sets x 15 Reps' },
-    ];
+    const { routines } = useRoutines();
+    const routine = routines.find(r => r.id === id);
+
+    if (!routine) {
+        return (
+            <Layout>
+                <div className="p-8 text-white">Routine not found</div>
+            </Layout>
+        );
+    }
+
+    const { name: routineName, exercises } = routine;
 
     return (
         <Layout title={routineName}>
@@ -27,9 +32,18 @@ export const RoutineDetail: React.FC = () => {
                         <ArrowLeft className="w-6 h-6" />
                     </button>
                     {/* Title handled by Layout on mobile, but we can override or just rely on it */}
-                    <button className="text-white">
-                        <MoreVertical className="w-6 h-6" />
+                    <button className="text-white" onClick={() => navigate(`/routine/${id}/edit`)}>
+                        <Edit className="w-6 h-6" />
                     </button>
+                </div>
+
+                {/* Desktop Header */}
+                <div className="hidden md:flex items-center justify-between">
+                    <h2 className="text-3xl font-bold text-white">{routineName}</h2>
+                    <Button variant="outline" onClick={() => navigate(`/routine/${id}/edit`)} className="border-white/20 hover:bg-white/10 text-white">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Routine
+                    </Button>
                 </div>
 
                 {/* Chart Card */}
@@ -80,7 +94,13 @@ export const RoutineDetail: React.FC = () => {
                                     </div>
                                     <div>
                                         <p className="text-white font-medium line-clamp-1">{exercise.name}</p>
-                                        <p className="text-white/60 text-sm line-clamp-1">{exercise.details}</p>
+                                        <p className="text-white/60 text-sm line-clamp-1">
+                                            {exercise.sets} Sets • {(() => {
+                                                if (!Array.isArray(exercise.reps) || exercise.reps.length === 0) return '0 Reps';
+                                                const allSame = exercise.reps.every(r => r === exercise.reps[0]);
+                                                return allSame ? `${exercise.reps[0]} Reps` : `${exercise.reps.join(', ')} Reps`;
+                                            })()}
+                                        </p>
                                     </div>
                                 </div>
                                 <ChevronRight className="w-6 h-6 text-white/60" />

@@ -1,20 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2, PlusCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-
-import { useRoutines } from '../context/RoutineContext';
+import { useRoutines } from '../context/RoutineContext'; // Assuming this context exists
 import type { Exercise } from '../types';
 
-export const CreateRoutine: React.FC = () => {
+export const EditRoutine: React.FC = () => {
     const navigate = useNavigate();
-    const { addRoutine } = useRoutines();
+    const { id } = useParams();
+    const { routines, updateRoutine, loading: contextLoading } = useRoutines();
+
     const [routineName, setRoutineName] = useState('');
-    const [exercises, setExercises] = useState<Exercise[]>([
-        { id: '1', name: '', sets: '', reps: [] }
-    ]);
+    const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (contextLoading) return;
+
+        if (id) {
+            const routine = routines.find(r => r.id === id);
+            if (routine) {
+                setRoutineName(routine.name);
+                setExercises(routine.exercises);
+                setLoading(false);
+            } else {
+                // Handle not found
+                navigate('/');
+            }
+        } else {
+            navigate('/');
+        }
+    }, [id, routines, contextLoading, navigate]);
 
     const addExercise = () => {
         setExercises([
@@ -23,14 +41,14 @@ export const CreateRoutine: React.FC = () => {
         ]);
     };
 
-    const removeExercise = (id: string) => {
-        setExercises(exercises.filter(ex => ex.id !== id));
+    const removeExercise = (exerciseId: string) => {
+        setExercises(exercises.filter(ex => ex.id !== exerciseId));
     };
 
-    const updateExercise = (id: string, field: 'name' | 'sets', value: string) => {
+    const updateExercise = (exerciseId: string, field: 'name' | 'sets', value: string) => {
         setExercises(prevExercises =>
             prevExercises.map(ex => {
-                if (ex.id === id) {
+                if (ex.id === exerciseId) {
                     if (field === 'sets') {
                         const setCount = Number(value) || 0;
                         const newReps = new Array(setCount).fill('').map((_, i) => ex.reps[i] || '');
@@ -56,32 +74,48 @@ export const CreateRoutine: React.FC = () => {
         );
     };
 
-    const handleSave = () => {
-        if (!routineName.trim()) return;
+    const handleSave = async () => {
+        if (!routineName.trim() || !id) return;
 
-        const newRoutine = {
-            id: crypto.randomUUID(),
+        const updatedRoutine = {
+            id,
             name: routineName,
             exercises,
             details: `${exercises.length} Exercises`,
-            icon: 'dumbbell',
-            color: 'text-primary',
-            bgColor: 'bg-primary/20',
+            icon: 'dumbbell', // Preserve or allow editing
+            color: 'text-primary', // Preserve or allow editing
+            bgColor: 'bg-primary/20', // Preserve or allow editing
         };
 
-        addRoutine(newRoutine);
-        navigate('/');
+        await updateRoutine(updatedRoutine);
+        navigate(`/routine/${id}`);
     };
 
+    const routine = routines.find(r => r.id === id);
+
+    if (loading || (!routine && contextLoading)) {
+        return (
+            <Layout title="Edit Routine">
+                <div className="p-8 text-white">Loading...</div>
+            </Layout>
+        );
+    }
+
+    if (!routine) {
+        return (
+            <Layout title="Error">
+                <div className="p-8 text-white">Routine not found. Redirecting...</div>
+            </Layout>
+        );
+    }
+
     return (
-        <Layout title="Create Routine">
+        <Layout title="Edit Routine">
             <div className="space-y-6 pb-24">
                 <div className="flex items-center gap-4 md:hidden">
                     <button onClick={() => navigate(-1)} className="text-primary">
                         <ArrowLeft className="w-6 h-6" />
                     </button>
-                    {/* Title is in Layout header for mobile, but we might want a custom header here if Layout's is too generic. 
-              Layout uses the title prop. */}
                 </div>
 
                 <div>
@@ -110,7 +144,7 @@ export const CreateRoutine: React.FC = () => {
                                 <div className="pt-8">
                                     <button
                                         onClick={() => removeExercise(exercise.id)}
-                                        className="text-gray-500 hover:text-red-500 p-2 border border-[#222222] bg-[#222222] rounded-lg h-14 w-14 flex items-center justify-center"
+                                        className="text-gray-500 hover:text-primary p-2 border border-[#222222] bg-[#222222] rounded-lg h-14 w-14 flex items-center justify-center"
                                     >
                                         <Trash2 className="w-6 h-6" />
                                     </button>
@@ -132,7 +166,7 @@ export const CreateRoutine: React.FC = () => {
                                     <div key={index} className="flex-1 min-w-[80px]">
                                         <Input
                                             label={`Set ${index + 1}`}
-                                            placeholder="Reps"
+                                            placeholder="e.g. 10 or 6-8"
                                             value={rep}
                                             onChange={(e) => updateRep(exercise.id, index, e.target.value)}
                                         />
@@ -154,7 +188,7 @@ export const CreateRoutine: React.FC = () => {
 
                 <div className="sticky bottom-0 bg-background-dark p-4 -mx-4 border-t border-white/10 md:static md:border-0 md:p-0 md:mx-0">
                     <Button className="w-full py-6 text-lg text-black" onClick={handleSave}>
-                        Save Routine
+                        Save Changes
                     </Button>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 interface RoutineContextType {
     routines: Routine[];
     addRoutine: (routine: Routine) => Promise<void>;
+    updateRoutine: (routine: Routine) => Promise<void>;
     loading: boolean;
 }
 
@@ -93,8 +94,71 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
+    const updateRoutine = async (routine: Routine) => {
+        try {
+            // 1. Update Routine Details
+            const { error: routineError } = await supabase
+                .from('routines')
+                .update({
+                    name: routine.name,
+                    details: routine.details,
+                    icon: routine.icon,
+                    color: routine.color,
+                    bg_color: routine.bgColor
+                })
+                .eq('id', routine.id);
+
+            if (routineError) throw routineError;
+
+            // 2. Handle Exercises
+            // Get existing exercises for this routine to know what to delete
+            const { data: existingExercises, error: fetchError } = await supabase
+                .from('exercises')
+                .select('id')
+                .eq('routine_id', routine.id);
+
+            if (fetchError) throw fetchError;
+
+            const existingIds = existingExercises?.map(e => e.id) || [];
+            const incomingIds = routine.exercises.map(e => e.id).filter(id => existingIds.includes(id));
+
+            // Identify IDs to delete (existing but not in incoming)
+            const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
+
+            if (idsToDelete.length > 0) {
+                const { error: deleteError } = await supabase
+                    .from('exercises')
+                    .delete()
+                    .in('id', idsToDelete);
+                if (deleteError) throw deleteError;
+            }
+
+            // Upsert exercises (update existing, insert new)
+            const exercisesToUpsert = routine.exercises.map((ex, index) => ({
+                id: ex.id,
+                routine_id: routine.id,
+                name: ex.name,
+                sets: ex.sets,
+                reps: ex.reps,
+                order_index: index
+            }));
+
+            const { error: upsertError } = await supabase
+                .from('exercises')
+                .upsert(exercisesToUpsert);
+
+            if (upsertError) throw upsertError;
+
+            // Refresh local state
+            await fetchRoutines();
+        } catch (error) {
+            console.error('Error updating routine:', error);
+            alert('Failed to update routine');
+        }
+    };
+
     return (
-        <RoutineContext.Provider value={{ routines, addRoutine, loading }}>
+        <RoutineContext.Provider value={{ routines, addRoutine, updateRoutine, loading }}>
             {children}
         </RoutineContext.Provider>
     );
