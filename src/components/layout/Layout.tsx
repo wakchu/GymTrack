@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, Home, PlusCircle } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import Logo from '../../assets/StoInAllenamento_Logo.png';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -34,7 +35,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex flex-col w-64 bg-[#1E1E1E] border-r border-white/10 p-6 sticky top-0 h-screen">
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-primary tracking-widest">GYM TRACKER</h1>
+                    <img src={Logo} alt="StoInAllenamento Logo" className="w-56 h-auto object-contain" />
                 </div>
                 <nav className="space-y-2">
                     {navItems.map((item) => (
