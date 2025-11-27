@@ -4,7 +4,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { ProgressChart } from '../components/ui/ProgressChart';
 import { useRoutines } from '../context/RoutineContext';
 
 export const RoutineDetail: React.FC = () => {
@@ -50,27 +49,15 @@ export const RoutineDetail: React.FC = () => {
                 <Card className="bg-black/20 border border-white/5">
                     <div className="space-y-2 mb-4">
                         <p className="text-white text-base font-medium">Strength Progress</p>
-                        <p className="text-white text-3xl font-bold">150 kg</p>
+                        <p className="text-white text-3xl font-bold">--</p>
                         <div className="flex gap-2 text-sm">
                             <span className="text-primary/70">Last 3 Months</span>
-                            <span className="text-primary font-medium">+12%</span>
+                            <span className="text-primary font-medium">--</span>
                         </div>
                     </div>
 
-                    <ProgressChart
-                        data={[
-                            { name: 'Jun', value: 135 },
-                            { name: 'Jul', value: 142 },
-                            { name: 'Aug', value: 150 },
-                            { name: 'Sep', value: 148 },
-                            { name: 'Oct', value: 155 },
-                            { name: 'Nov', value: 162 },
-                        ]}
-                    />
-
-                    <div className="flex justify-between mt-4 text-primary/70 text-xs font-bold uppercase tracking-wider">
-                        <span>Jun</span>
-                        <span>Nov</span>
+                    <div className="flex items-center justify-center h-48 text-white/60">
+                        No data registered yet
                     </div>
                 </Card>
 
