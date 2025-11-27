@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useRoutines } from '../context/RoutineContext';
@@ -12,7 +12,7 @@ export const WorkoutSession: React.FC = () => {
 
     // State
     const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-    const [currentSet, setCurrentSet] = useState(1);
+    const [completedSets, setCompletedSets] = useState<Record<string, number>>({});
 
 
     // Input State
@@ -33,22 +33,29 @@ export const WorkoutSession: React.FC = () => {
 
 
     // Initialize inputs when exercise or set changes
+    // Initialize inputs when exercise changes
     useEffect(() => {
         if (currentExercise) {
+            const setsDone = completedSets[currentExercise.id] || 0;
+            const nextSet = setsDone + 1;
+
             // Pre-fill reps if available from target
             const targetReps = Array.isArray(currentExercise.reps)
-                ? currentExercise.reps[currentSet - 1] || currentExercise.reps[0]
+                ? currentExercise.reps[nextSet - 1] || currentExercise.reps[0]
                 : '';
             setReps(targetReps);
             // Keep weight from previous set or clear? Let's keep it if it's not the first set
-            if (currentSet === 1) setWeight('');
+            if (nextSet === 1) setWeight('');
         }
-    }, [currentExercise, currentSet]);
+    }, [currentExercise, completedSets]);
 
 
 
     const handleCompleteSet = async () => {
         if (!currentExercise || !routine) return;
+
+        const setsDone = completedSets[currentExercise.id] || 0;
+        const currentSetNumber = setsDone + 1;
 
         try {
             // Save log to Supabase
@@ -59,32 +66,66 @@ export const WorkoutSession: React.FC = () => {
                     exercise_id: currentExercise.id,
                     weight: Number(weight) || 0,
                     reps: Number(reps) || 0,
-                    set_number: currentSet
+                    set_number: currentSetNumber
                 });
 
             if (error) throw error;
 
-            // Logic to move to next set or exercise
-            const totalSets = Number(currentExercise.sets) || 3; // Default to 3 if parsing fails
+            // Update local progress
+            setCompletedSets(prev => ({
+                ...prev,
+                [currentExercise.id]: (prev[currentExercise.id] || 0) + 1
+            }));
 
-            if (currentSet < totalSets) {
-                // Next Set
-                setCurrentSet(prev => prev + 1);
+            // Logic to move to next set or exercise
+            const totalSets = Number(currentExercise.sets) || 3;
+
+            if (currentSetNumber < totalSets) {
+                // Stay on current exercise for next set
             } else {
                 // Exercise Complete
                 if (currentExerciseIndex < routine.exercises.length - 1) {
                     // Next Exercise
                     setCurrentExerciseIndex(prev => prev + 1);
-                    setCurrentSet(1);
                 } else {
-                    // Workout Complete
-                    alert('Workout Complete!');
-                    navigate('/');
+                    // Workout Complete (all exercises done)
+                    // We don't auto-finish anymore, user must click Finish
                 }
             }
         } catch (err) {
             console.error('Error logging set:', err);
             alert('Failed to save set. Please try again.');
+        }
+    };
+
+    const handleFinish = () => {
+        if (!routine) return;
+
+        // Check if all exercises are completed
+        const allCompleted = routine.exercises.every(ex => {
+            const setsDone = completedSets[ex.id] || 0;
+            const totalSets = Number(ex.sets) || 0;
+            return setsDone >= totalSets;
+        });
+
+        if (!allCompleted) {
+            alert('Please complete all sets for all exercises before finishing.');
+            return;
+        }
+
+        alert('Workout Complete!');
+        navigate('/');
+    };
+
+    const prevExercise = () => {
+        if (currentExerciseIndex > 0) {
+            setCurrentExerciseIndex(prev => prev - 1);
+        }
+    };
+
+    const nextExercise = () => {
+        if (routine && currentExerciseIndex < routine.exercises.length - 1) {
+            setCurrentExerciseIndex(prev => prev + 1);
         }
     };
 
@@ -104,8 +145,8 @@ export const WorkoutSession: React.FC = () => {
                     <ArrowLeft className="w-6 h-6" />
                 </button>
                 <h2 className="text-lg font-bold flex-1 text-center">{routine.name}</h2>
-                <button className="w-auto text-primary font-bold" onClick={() => navigate('/')}>
-                    End
+                <button className="w-auto text-primary font-bold" onClick={handleFinish}>
+                    Finish
                 </button>
             </div>
 
@@ -127,7 +168,23 @@ export const WorkoutSession: React.FC = () => {
 
             {/* Main Card */}
             <div className="flex flex-col gap-6 rounded-xl bg-[#1C1C1E] p-6 flex-1">
-                <h1 className="text-3xl font-bold text-center tracking-tight uppercase">{currentExercise.name}</h1>
+                <div className="flex items-center justify-between">
+                    <button
+                        onClick={prevExercise}
+                        disabled={currentExerciseIndex === 0}
+                        className="p-2 disabled:opacity-30"
+                    >
+                        <ChevronLeft className="w-8 h-8" />
+                    </button>
+                    <h1 className="text-3xl font-bold text-center tracking-tight uppercase flex-1">{currentExercise.name}</h1>
+                    <button
+                        onClick={nextExercise}
+                        disabled={!routine || currentExerciseIndex === routine.exercises.length - 1}
+                        className="p-2 disabled:opacity-30"
+                    >
+                        <ChevronRight className="w-8 h-8" />
+                    </button>
+                </div>
 
                 <div className="flex flex-wrap gap-4">
                     <div className="flex-1 min-w-[140px] flex flex-col items-center gap-2 rounded-lg border border-white/10 p-4">
@@ -152,33 +209,14 @@ export const WorkoutSession: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-[140px] flex flex-col items-center gap-2 rounded-lg border border-white/10 p-4">
                         <p className="text-base font-medium">Set</p>
-                        <p className="text-2xl font-bold">{currentSet}/{totalSets}</p>
+                        <p className="text-2xl font-bold">{(completedSets[currentExercise.id] || 0) + 1}/{totalSets}</p>
                     </div>
                 </div>
 
                 <div className="flex-grow" />
 
                 <div className="flex flex-col gap-4 pt-8 pb-4">
-                    <Button
-                        variant="secondary"
-                        className="h-14 bg-white/10 hover:bg-white/20"
-                        onClick={() => {
-                            // Skip exercise logic if needed, or just next set
-                            // For now let's just keep it as "Next Exercise" button but maybe it should skip?
-                            // The original design had "Next Exercise". Let's make it skip the rest of this exercise.
-                            if (confirm('Skip remaining sets for this exercise?')) {
-                                if (currentExerciseIndex < routine.exercises.length - 1) {
-                                    setCurrentExerciseIndex(prev => prev + 1);
-                                    setCurrentSet(1);
-                                } else {
-                                    alert('Workout Complete!');
-                                    navigate('/');
-                                }
-                            }
-                        }}
-                    >
-                        Skip Exercise
-                    </Button>
+
                     <Button className="h-16 text-lg text-black" onClick={handleCompleteSet}>
                         Complete Set
                     </Button>
