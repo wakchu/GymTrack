@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MoreVertical, TrendingUp, Dumbbell, Plus } from 'lucide-react';
+import { ArrowLeft, MoreVertical, TrendingUp, Dumbbell, Plus, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useRoutines } from '../context/RoutineContext';
@@ -85,6 +85,27 @@ export const ExerciseDetail: React.FC = () => {
             month: 'short',
             day: 'numeric'
         });
+    };
+
+    const handleDeleteLog = async (logId: string) => {
+        if (!confirm('Are you sure you want to delete this record?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('workout_logs')
+                .delete()
+                .eq('id', logId);
+
+            if (error) throw error;
+
+            // Update local state
+            const updatedLogs = logs.filter(l => l.id !== logId);
+            setLogs(updatedLogs);
+            calculateStats(updatedLogs);
+        } catch (error) {
+            console.error('Error deleting log:', error);
+            alert('Failed to delete record');
+        }
     };
 
     return (
@@ -183,14 +204,25 @@ export const ExerciseDetail: React.FC = () => {
                                         <p className="text-primary/70 text-sm">{log.set_number} set • {log.reps} reps</p>
                                     </div>
                                 </div>
-                                <p className="text-primary/70 text-sm">{formatDate(log.created_at)}</p>
+                                <div className="flex items-center gap-3">
+                                    <p className="text-primary/70 text-sm">{formatDate(log.created_at)}</p>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteLog(log.id);
+                                        }}
+                                        className="text-white/40 hover:text-red-500 transition-colors p-1"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
                         ))
                     )}
                 </div>
 
                 {/* FAB */}
-                <div className="fixed bottom-6 right-6 md:hidden">
+                <div className="fixed bottom-6 right-6 md:hidden z-[60]">
                     <Button variant="fab">
                         <Plus className="w-8 h-8" />
                     </Button>
