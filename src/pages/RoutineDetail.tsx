@@ -1,6 +1,8 @@
-import React from 'react';
-import { ArrowLeft, Dumbbell, ChevronRight, Play, Edit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Dumbbell, ChevronRight, Play, Edit, TrendingUp } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { supabase } from '../lib/supabase';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -12,6 +14,97 @@ export const RoutineDetail: React.FC = () => {
 
     const { routines } = useRoutines();
     const routine = routines.find(r => r.id === id);
+
+    const [stats, setStats] = useState({
+        maxVolume: 0,
+        progress: 0
+    });
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (routine) {
+            fetchLogs();
+        }
+    }, [routine]);
+
+    const fetchLogs = async () => {
+        if (!routine) return;
+
+        try {
+            // Get all exercise IDs in this routine
+            const exerciseIds = routine.exercises.map(e => e.id);
+
+            if (exerciseIds.length === 0) {
+                setLoading(false);
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('workout_logs')
+                .select('*')
+                .in('exercise_id', exerciseIds)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data) {
+                calculateStats(data);
+            }
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateStats = (data: any[]) => {
+        if (!data.length) return;
+
+        // Calculate Volume per Session for Chart
+        // Group by date (YYYY-MM-DD)
+        const volumeByDate: Record<string, number> = {};
+
+        // Process data in reverse chronological order (oldest first) for the chart
+        // The input 'data' is sorted descending (newest first), so we reverse it for processing
+        [...data].reverse().forEach(log => {
+            const date = new Date(log.created_at).toLocaleDateString('en-CA'); // YYYY-MM-DD
+            const vol = (Number(log.weight) || 0) * (Number(log.reps) || 0);
+
+            if (volumeByDate[date]) {
+                volumeByDate[date] += vol;
+            } else {
+                volumeByDate[date] = vol;
+            }
+        });
+
+        const chartDataArray = Object.entries(volumeByDate).map(([date, volume]) => ({
+            date,
+            volume,
+            displayDate: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }));
+
+        setChartData(chartDataArray);
+
+        // Calculate Stats
+        const volumes = chartDataArray.map(d => d.volume);
+        const maxVolume = Math.max(...volumes, 0);
+
+        // Recent Progress (compare last session vs previous session)
+        let progress = 0;
+        if (volumes.length >= 2) {
+            const current = volumes[volumes.length - 1];
+            const previous = volumes[volumes.length - 2];
+            if (previous > 0) {
+                progress = ((current - previous) / previous) * 100;
+            }
+        }
+
+        setStats({
+            maxVolume,
+            progress
+        });
+    };
 
     if (!routine) {
         return (
@@ -48,16 +141,64 @@ export const RoutineDetail: React.FC = () => {
                 {/* Chart Card */}
                 <Card className="bg-black/20 border border-white/5">
                     <div className="space-y-2 mb-4">
-                        <p className="text-white text-base font-medium">Strength Progress</p>
-                        <p className="text-white text-3xl font-bold">--</p>
-                        <div className="flex gap-2 text-sm">
-                            <span className="text-primary/70">Last 3 Months</span>
-                            <span className="text-primary font-medium">--</span>
+                        <p className="text-white text-base font-medium">Total Volume</p>
+                        <p className="text-white text-3xl font-bold">{stats.maxVolume > 0 ? `${stats.maxVolume} kg` : '--'}</p>
+                        <div className="flex gap-2 text-sm items-center">
+                            <span className="text-primary/70">Last Session</span>
+                            {stats.maxVolume > 0 && (
+                                <div className={`flex items-center gap-1 ${stats.progress >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                                    <TrendingUp className={`w-4 h-4 ${stats.progress < 0 ? 'rotate-180' : ''}`} />
+                                    <span className="font-medium">{stats.progress > 0 ? '+' : ''}{stats.progress.toFixed(1)}%</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-center h-48 text-white/60">
-                        No data registered yet
+                    <div className="h-48 w-full relative overflow-hidden">
+                        {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorRoutineVolume" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#06f906" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#06f906" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis
+                                        dataKey="displayDate"
+                                        stroke="#666"
+                                        tick={{ fill: '#666', fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <YAxis
+                                        stroke="#666"
+                                        tick={{ fill: '#666', fontSize: 10 }}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        width={30}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#06f906' }}
+                                        labelStyle={{ color: '#999' }}
+                                        formatter={(value: number) => [`${value} kg`, 'Volume']}
+                                    />
+                                    <Area
+                                        type="monotone"
+                                        dataKey="volume"
+                                        stroke="#06f906"
+                                        strokeWidth={2}
+                                        fillOpacity={1}
+                                        fill="url(#colorRoutineVolume)"
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-white/60">
+                                {loading ? 'Loading data...' : 'No data registered yet'}
+                            </div>
+                        )}
                     </div>
                 </Card>
 
