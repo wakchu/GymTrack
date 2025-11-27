@@ -36,9 +36,10 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <Layout title="My Routines">
+        <Layout>
             <div className="space-y-4 pb-24">
-                <div className="flex justify-end px-1">
+                <div className="flex justify-between items-center px-1">
+                    <h1 className="text-2xl font-bold">My Routines</h1>
                     <button
                         onClick={toggleSort}
                         className="flex items-center gap-2 text-sm text-gray-400 hover:text-primary transition-colors"
