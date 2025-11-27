@@ -13,8 +13,7 @@ export const WorkoutSession: React.FC = () => {
     // State
     const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
     const [currentSet, setCurrentSet] = useState(1);
-    const [isResting, setIsResting] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(90);
+
 
     // Input State
     const [weight, setWeight] = useState('');
@@ -31,21 +30,7 @@ export const WorkoutSession: React.FC = () => {
         }
     }, [routine]);
 
-    useEffect(() => {
-        let interval: ReturnType<typeof setInterval>;
-        if (isResting) {
-            interval = setInterval(() => {
-                setTimeLeft((prev) => {
-                    if (prev <= 1) {
-                        setIsResting(false);
-                        return 90;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [isResting]);
+
 
     // Initialize inputs when exercise or set changes
     useEffect(() => {
@@ -60,11 +45,7 @@ export const WorkoutSession: React.FC = () => {
         }
     }, [currentExercise, currentSet]);
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
+
 
     const handleCompleteSet = async () => {
         if (!currentExercise || !routine) return;
@@ -89,16 +70,12 @@ export const WorkoutSession: React.FC = () => {
             if (currentSet < totalSets) {
                 // Next Set
                 setCurrentSet(prev => prev + 1);
-                setIsResting(true);
-                setTimeLeft(90);
             } else {
                 // Exercise Complete
                 if (currentExerciseIndex < routine.exercises.length - 1) {
                     // Next Exercise
                     setCurrentExerciseIndex(prev => prev + 1);
                     setCurrentSet(1);
-                    setIsResting(true);
-                    setTimeLeft(90);
                 } else {
                     // Workout Complete
                     alert('Workout Complete!');
@@ -111,10 +88,7 @@ export const WorkoutSession: React.FC = () => {
         }
     };
 
-    const handleSkipRest = () => {
-        setIsResting(false);
-        setTimeLeft(90);
-    };
+
 
     if (!routine || !currentExercise) {
         return <div className="min-h-screen bg-background-dark text-white p-4">Loading or Routine Not Found...</div>;
@@ -211,29 +185,7 @@ export const WorkoutSession: React.FC = () => {
                 </div>
             </div>
 
-            {/* Rest Timer Overlay */}
-            {isResting && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 p-4 backdrop-blur-sm z-50">
-                    <div className="flex w-full max-w-sm flex-col items-center gap-8 rounded-xl bg-[#1C1C1E] p-8 border border-white/10">
-                        <h2 className="text-xl font-bold">REST</h2>
-                        <div className="flex items-end justify-center gap-1 text-primary">
-                            <p className="text-7xl font-bold leading-none tracking-tighter">
-                                {formatTime(timeLeft).split(':')[0]}
-                            </p>
-                            <p className="pb-2 text-4xl font-bold leading-none opacity-70">:</p>
-                            <p className="text-7xl font-bold leading-none tracking-tighter">
-                                {formatTime(timeLeft).split(':')[1]}
-                            </p>
-                        </div>
-                        <Button
-                            className="w-full bg-primary/20 text-primary hover:bg-primary/30"
-                            onClick={handleSkipRest}
-                        >
-                            Skip Rest
-                        </Button>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 };
