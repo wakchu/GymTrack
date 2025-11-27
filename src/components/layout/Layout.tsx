@@ -33,7 +33,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             </main>
 
             {/* Floating Switcher */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]">
                 <nav className="flex items-center gap-2 bg-[#1E1E1E]/90 backdrop-blur-md border border-white/10 p-2 rounded-full shadow-2xl">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
