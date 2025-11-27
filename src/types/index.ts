@@ -13,4 +13,5 @@ export interface Routine {
     icon: string; // Changed from any to string for serialization
     color?: string;
     bgColor?: string;
+    createdAt?: string;
 }

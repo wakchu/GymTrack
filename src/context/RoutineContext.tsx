@@ -41,6 +41,7 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const formattedRoutines: Routine[] = data.map((r: any) => ({
                     ...r,
                     bgColor: r.bg_color,
+                    createdAt: r.created_at,
                     exercises: r.exercises
                         .sort((a: any, b: any) => a.order_index - b.order_index)
                         .map((e: any) => ({

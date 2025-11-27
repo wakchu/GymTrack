@@ -1,5 +1,5 @@
-import React from 'react';
-import { Dumbbell, ChevronRight, Plus, PersonStanding } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Dumbbell, ChevronRight, Plus, PersonStanding, ArrowUpDown, Calendar } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Layout } from '../components/layout/Layout';
@@ -11,14 +11,53 @@ const iconMap: Record<string, React.ElementType> = {
     'person-standing': PersonStanding,
 };
 
+type SortOption = 'name' | 'date';
+
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const { routines } = useRoutines();
+    const [sortBy, setSortBy] = useState<SortOption>('name');
+
+    const sortedRoutines = useMemo(() => {
+        return [...routines].sort((a, b) => {
+            if (sortBy === 'name') {
+                return a.name.localeCompare(b.name);
+            } else {
+                // Sort by date descending (newest first)
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA;
+            }
+        });
+    }, [routines, sortBy]);
+
+    const toggleSort = () => {
+        setSortBy(prev => prev === 'name' ? 'date' : 'name');
+    };
 
     return (
         <Layout title="My Routines">
             <div className="space-y-4 pb-24">
-                {routines.map((routine) => {
+                <div className="flex justify-end px-1">
+                    <button
+                        onClick={toggleSort}
+                        className="flex items-center gap-2 text-sm text-gray-400 hover:text-primary transition-colors"
+                    >
+                        {sortBy === 'name' ? (
+                            <>
+                                <ArrowUpDown className="w-4 h-4" />
+                                <span>Sort by Date</span>
+                            </>
+                        ) : (
+                            <>
+                                <Calendar className="w-4 h-4" />
+                                <span>Sort by Name</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {sortedRoutines.map((routine) => {
                     const IconComponent = iconMap[routine.icon] || Dumbbell;
                     return (
                         <Card

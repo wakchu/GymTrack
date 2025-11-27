@@ -1,12 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
+import { useRoutines } from '../context/RoutineContext';
+import { supabase } from '../lib/supabase';
 
 export const WorkoutSession: React.FC = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const { routines } = useRoutines();
+
+    // State
+    const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+    const [currentSet, setCurrentSet] = useState(1);
     const [isResting, setIsResting] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(90); // 1:30 default rest
+    const [timeLeft, setTimeLeft] = useState(90);
+
+    // Input State
+    const [weight, setWeight] = useState('');
+    const [reps, setReps] = useState('');
+
+    const routine = routines.find(r => r.id === id);
+    const currentExercise = routine?.exercises[currentExerciseIndex];
+
+    useEffect(() => {
+        if (!routine) {
+            // Wait for routines to load or redirect if not found
+            // For now, we assume routines might be loading, but if empty and not loading, redirect
+            // Ideally we check 'loading' from context
+        }
+    }, [routine]);
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
@@ -24,21 +47,80 @@ export const WorkoutSession: React.FC = () => {
         return () => clearInterval(interval);
     }, [isResting]);
 
+    // Initialize inputs when exercise or set changes
+    useEffect(() => {
+        if (currentExercise) {
+            // Pre-fill reps if available from target
+            const targetReps = Array.isArray(currentExercise.reps)
+                ? currentExercise.reps[currentSet - 1] || currentExercise.reps[0]
+                : '';
+            setReps(targetReps);
+            // Keep weight from previous set or clear? Let's keep it if it's not the first set
+            if (currentSet === 1) setWeight('');
+        }
+    }, [currentExercise, currentSet]);
+
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleCompleteSet = () => {
-        setIsResting(true);
-        setTimeLeft(90);
+    const handleCompleteSet = async () => {
+        if (!currentExercise || !routine) return;
+
+        try {
+            // Save log to Supabase
+            const { error } = await supabase
+                .from('workout_logs')
+                .insert({
+                    routine_id: routine.id,
+                    exercise_id: currentExercise.id,
+                    weight: Number(weight) || 0,
+                    reps: Number(reps) || 0,
+                    set_number: currentSet
+                });
+
+            if (error) throw error;
+
+            // Logic to move to next set or exercise
+            const totalSets = Number(currentExercise.sets) || 3; // Default to 3 if parsing fails
+
+            if (currentSet < totalSets) {
+                // Next Set
+                setCurrentSet(prev => prev + 1);
+                setIsResting(true);
+                setTimeLeft(90);
+            } else {
+                // Exercise Complete
+                if (currentExerciseIndex < routine.exercises.length - 1) {
+                    // Next Exercise
+                    setCurrentExerciseIndex(prev => prev + 1);
+                    setCurrentSet(1);
+                    setIsResting(true);
+                    setTimeLeft(90);
+                } else {
+                    // Workout Complete
+                    alert('Workout Complete!');
+                    navigate('/');
+                }
+            }
+        } catch (err) {
+            console.error('Error logging set:', err);
+            alert('Failed to save set. Please try again.');
+        }
     };
 
     const handleSkipRest = () => {
         setIsResting(false);
         setTimeLeft(90);
     };
+
+    if (!routine || !currentExercise) {
+        return <div className="min-h-screen bg-background-dark text-white p-4">Loading or Routine Not Found...</div>;
+    }
+
+    const totalSets = Number(currentExercise.sets) || 0;
 
     return (
         <div className="min-h-screen bg-background-dark text-white flex flex-col p-4 relative">
@@ -47,9 +129,9 @@ export const WorkoutSession: React.FC = () => {
                 <button onClick={() => navigate(-1)} className="flex items-center justify-start w-12">
                     <ArrowLeft className="w-6 h-6" />
                 </button>
-                <h2 className="text-lg font-bold flex-1 text-center">Push Day</h2>
+                <h2 className="text-lg font-bold flex-1 text-center">{routine.name}</h2>
                 <button className="w-auto text-primary font-bold" onClick={() => navigate('/')}>
-                    End Workout
+                    End
                 </button>
             </div>
 
@@ -59,35 +141,69 @@ export const WorkoutSession: React.FC = () => {
                     <span>Overall Progress</span>
                 </div>
                 <div className="rounded bg-[#1C1C1E] h-2 w-full">
-                    <div className="h-full rounded bg-primary" style={{ width: '38%' }} />
+                    <div
+                        className="h-full rounded bg-primary transition-all duration-300"
+                        style={{ width: `${((currentExerciseIndex) / routine.exercises.length) * 100}%` }}
+                    />
                 </div>
-                <p className="text-primary/80 text-sm">Exercise 3 of 8</p>
+                <p className="text-primary/80 text-sm">
+                    Exercise {currentExerciseIndex + 1} of {routine.exercises.length}
+                </p>
             </div>
 
             {/* Main Card */}
             <div className="flex flex-col gap-6 rounded-xl bg-[#1C1C1E] p-6 flex-1">
-                <h1 className="text-3xl font-bold text-center tracking-tight">BENCH PRESS</h1>
+                <h1 className="text-3xl font-bold text-center tracking-tight uppercase">{currentExercise.name}</h1>
 
                 <div className="flex flex-wrap gap-4">
                     <div className="flex-1 min-w-[140px] flex flex-col items-center gap-2 rounded-lg border border-white/10 p-4">
-                        <p className="text-base font-medium">Weight</p>
-                        <p className="text-2xl font-bold">80 kg</p>
+                        <p className="text-base font-medium">Weight (kg)</p>
+                        <input
+                            type="number"
+                            value={weight}
+                            onChange={(e) => setWeight(e.target.value)}
+                            placeholder="0"
+                            className="text-2xl font-bold bg-transparent text-center w-full outline-none text-white placeholder-white/20"
+                        />
                     </div>
                     <div className="flex-1 min-w-[140px] flex flex-col items-center gap-2 rounded-lg border-2 border-primary bg-primary/10 p-4">
                         <p className="text-base font-medium text-primary">Reps</p>
-                        <p className="text-5xl font-bold text-primary">10</p>
+                        <input
+                            type="number"
+                            value={reps}
+                            onChange={(e) => setReps(e.target.value)}
+                            placeholder="0"
+                            className="text-5xl font-bold text-primary bg-transparent text-center w-full outline-none placeholder-primary/20"
+                        />
                     </div>
                     <div className="flex-1 min-w-[140px] flex flex-col items-center gap-2 rounded-lg border border-white/10 p-4">
                         <p className="text-base font-medium">Set</p>
-                        <p className="text-2xl font-bold">2/4</p>
+                        <p className="text-2xl font-bold">{currentSet}/{totalSets}</p>
                     </div>
                 </div>
 
                 <div className="flex-grow" />
 
                 <div className="flex flex-col gap-4 pt-8 pb-4">
-                    <Button variant="secondary" className="h-14 bg-white/10 hover:bg-white/20">
-                        Next Exercise
+                    <Button
+                        variant="secondary"
+                        className="h-14 bg-white/10 hover:bg-white/20"
+                        onClick={() => {
+                            // Skip exercise logic if needed, or just next set
+                            // For now let's just keep it as "Next Exercise" button but maybe it should skip?
+                            // The original design had "Next Exercise". Let's make it skip the rest of this exercise.
+                            if (confirm('Skip remaining sets for this exercise?')) {
+                                if (currentExerciseIndex < routine.exercises.length - 1) {
+                                    setCurrentExerciseIndex(prev => prev + 1);
+                                    setCurrentSet(1);
+                                } else {
+                                    alert('Workout Complete!');
+                                    navigate('/');
+                                }
+                            }
+                        }}
+                    >
+                        Skip Exercise
                     </Button>
                     <Button className="h-16 text-lg text-black" onClick={handleCompleteSet}>
                         Complete Set
