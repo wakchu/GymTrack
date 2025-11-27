@@ -46,12 +46,12 @@ export const Dashboard: React.FC = () => {
                     >
                         {sortBy === 'name' ? (
                             <>
-                                <ArrowUpDown className="w-4 h-4" />
+                                <Calendar className="w-4 h-4" />
                                 <span>Sort by Date</span>
                             </>
                         ) : (
                             <>
-                                <Calendar className="w-4 h-4" />
+                                <ArrowUpDown className="w-4 h-4" />
                                 <span>Sort by Name</span>
                             </>
                         )}
