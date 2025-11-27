@@ -41,7 +41,12 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 const formattedRoutines: Routine[] = data.map((r: any) => ({
                     ...r,
                     bgColor: r.bg_color,
-                    exercises: r.exercises.sort((a: any, b: any) => a.order_index - b.order_index)
+                    exercises: r.exercises
+                        .sort((a: any, b: any) => a.order_index - b.order_index)
+                        .map((e: any) => ({
+                            ...e,
+                            reps: typeof e.reps === 'string' ? JSON.parse(e.reps) : e.reps
+                        }))
                 }));
                 setRoutines(formattedRoutines);
             }
@@ -75,7 +80,7 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                     routine_id: routineData.id,
                     name: ex.name,
                     sets: ex.sets,
-                    reps: ex.reps,
+                    reps: JSON.stringify(ex.reps),
                     order_index: index
                 }));
 
@@ -139,7 +144,7 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 routine_id: routine.id,
                 name: ex.name,
                 sets: ex.sets,
-                reps: ex.reps,
+                reps: JSON.stringify(ex.reps),
                 order_index: index
             }));
 
