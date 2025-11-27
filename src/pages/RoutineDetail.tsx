@@ -24,13 +24,13 @@ export const RoutineDetail: React.FC = () => {
     const { name: routineName, exercises } = routine;
 
     return (
-        <Layout title={routineName}>
+        <Layout>
             <div className="space-y-6 pb-24">
                 <div className="flex items-center justify-between md:hidden">
                     <button onClick={() => navigate(-1)} className="text-white">
                         <ArrowLeft className="w-6 h-6" />
                     </button>
-                    {/* Title handled by Layout on mobile, but we can override or just rely on it */}
+                    <h1 className="text-xl font-bold text-white">{routineName}</h1>
                     <button className="text-white" onClick={() => navigate(`/routine/${id}/edit`)}>
                         <Edit className="w-6 h-6" />
                     </button>
