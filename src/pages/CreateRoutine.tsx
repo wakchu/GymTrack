@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/layout/Layout';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
 
 import { useRoutines } from '../context/RoutineContext';
 import type { Exercise } from '../types';
@@ -15,6 +16,7 @@ export const CreateRoutine: React.FC = () => {
     const [exercises, setExercises] = useState<Exercise[]>([
         { id: '1', name: '', sets: '', reps: [] }
     ]);
+    const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
     const addExercise = () => {
         setExercises([
@@ -58,7 +60,10 @@ export const CreateRoutine: React.FC = () => {
 
     const handleSave = () => {
         if (!routineName.trim()) return;
+        setShowSaveConfirmation(true);
+    };
 
+    const confirmSave = () => {
         const newRoutine = {
             id: crypto.randomUUID(),
             name: routineName,
@@ -158,6 +163,26 @@ export const CreateRoutine: React.FC = () => {
                     </Button>
                 </div>
             </div>
+
+            <Modal
+                isOpen={showSaveConfirmation}
+                onClose={() => setShowSaveConfirmation(false)}
+                title="Save Routine"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setShowSaveConfirmation(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={confirmSave}>
+                            Confirm Save
+                        </Button>
+                    </>
+                }
+            >
+                <p className="text-gray-300">
+                    Are you sure you want to save this routine with {exercises.length} exercises?
+                </p>
+            </Modal>
         </Layout>
     );
 };
