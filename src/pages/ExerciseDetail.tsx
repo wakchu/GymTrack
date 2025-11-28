@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, MoreVertical, TrendingUp, Dumbbell, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, MoreVertical, TrendingUp, Dumbbell, Plus, Trash2, Pencil } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useRoutines } from '../context/RoutineContext';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
+import { Input } from '../components/ui/Input';
 
 export const ExerciseDetail: React.FC = () => {
     const navigate = useNavigate();
@@ -21,6 +23,15 @@ export const ExerciseDetail: React.FC = () => {
         progress: 0
     });
     const [chartData, setChartData] = useState<any[]>([]);
+
+    // Edit State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingLog, setEditingLog] = useState<any>(null);
+    const [editForm, setEditForm] = useState({
+        weight: '',
+        reps: '',
+        date: ''
+    });
 
     // Find exercise name from routines context
     const exerciseName = useMemo(() => {
@@ -131,6 +142,51 @@ export const ExerciseDetail: React.FC = () => {
         } catch (error) {
             console.error('Error deleting log:', error);
             alert('Failed to delete record');
+        }
+    };
+
+    const handleEditClick = (log: any) => {
+        setEditingLog(log);
+        setEditForm({
+            weight: log.weight,
+            reps: log.reps,
+            date: new Date(log.created_at).toISOString().split('T')[0]
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingLog) return;
+
+        try {
+            const { error } = await supabase
+                .from('workout_logs')
+                .update({
+                    weight: editForm.weight,
+                    reps: editForm.reps,
+                    created_at: new Date(editForm.date).toISOString()
+                })
+                .eq('id', editingLog.id);
+
+            if (error) throw error;
+
+            // Update local state
+            const updatedLogs = logs.map(l =>
+                l.id === editingLog.id
+                    ? { ...l, weight: editForm.weight, reps: editForm.reps, created_at: new Date(editForm.date).toISOString() }
+                    : l
+            );
+
+            // Re-sort logs by date descending
+            updatedLogs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            setLogs(updatedLogs);
+            calculateStats(updatedLogs);
+            setIsEditModalOpen(false);
+            setEditingLog(null);
+        } catch (error) {
+            console.error('Error updating log:', error);
+            alert('Failed to update record');
         }
     };
 
@@ -257,6 +313,15 @@ export const ExerciseDetail: React.FC = () => {
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
+                                            handleEditClick(log);
+                                        }}
+                                        className="text-white/40 hover:text-white transition-colors p-1"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             handleDeleteLog(log.id);
                                         }}
                                         className="text-white/40 hover:text-red-500 transition-colors p-1"
@@ -276,6 +341,39 @@ export const ExerciseDetail: React.FC = () => {
                     </Button>
                 </div>
             </div>
+
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                title="Edit Record"
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveEdit}>Save Changes</Button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <Input
+                        label="Weight (kg)"
+                        type="number"
+                        value={editForm.weight}
+                        onChange={(e) => setEditForm({ ...editForm, weight: e.target.value })}
+                    />
+                    <Input
+                        label="Reps"
+                        type="number"
+                        value={editForm.reps}
+                        onChange={(e) => setEditForm({ ...editForm, reps: e.target.value })}
+                    />
+                    <Input
+                        label="Date"
+                        type="date"
+                        value={editForm.date}
+                        onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                    />
+                </div>
+            </Modal>
         </Layout>
     );
 };
