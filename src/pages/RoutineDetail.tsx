@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Dumbbell, ChevronRight, Play, Edit, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Dumbbell, ChevronRight, Play, Edit, TrendingUp, Trash2, MoreVertical } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
@@ -12,7 +12,7 @@ export const RoutineDetail: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams();
 
-    const { routines } = useRoutines();
+    const { routines, deleteRoutine } = useRoutines();
     const routine = routines.find(r => r.id === id);
 
     const [stats, setStats] = useState({
@@ -21,6 +21,7 @@ export const RoutineDetail: React.FC = () => {
     });
     const [chartData, setChartData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     useEffect(() => {
         if (routine) {
@@ -106,6 +107,19 @@ export const RoutineDetail: React.FC = () => {
         });
     };
 
+    const handleDelete = async () => {
+        if (!routine) return;
+
+        if (window.confirm('Are you sure you want to delete this routine? This will delete all associated data including workout history for these exercises. This action cannot be undone.')) {
+            try {
+                await deleteRoutine(routine.id);
+                navigate('/');
+            } catch (error) {
+                // Error is handled in context
+            }
+        }
+    };
+
     if (!routine) {
         return (
             <Layout>
@@ -124,18 +138,66 @@ export const RoutineDetail: React.FC = () => {
                         <ArrowLeft className="w-6 h-6" />
                     </button>
                     <h1 className="text-xl font-bold text-white">{routineName}</h1>
-                    <button className="text-white" onClick={() => navigate(`/routine/${id}/edit`)}>
-                        <Edit className="w-6 h-6" />
-                    </button>
+                    <div className="relative">
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-white p-1">
+                            <MoreVertical className="w-6 h-6" />
+                        </button>
+                        {isMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden">
+                                    <button
+                                        onClick={() => navigate(`/routine/${id}/edit`)}
+                                        className="w-full px-4 py-3 text-left text-white hover:bg-white/5 flex items-center gap-3"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        Edit Routine
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="w-full px-4 py-3 text-left text-red-500 hover:bg-red-500/10 flex items-center gap-3"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete Routine
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Desktop Header */}
                 <div className="hidden md:flex items-center justify-between">
                     <h2 className="text-3xl font-bold text-white">{routineName}</h2>
-                    <Button variant="outline" onClick={() => navigate(`/routine/${id}/edit`)} className="border-white/20 hover:bg-white/10 text-white">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Routine
-                    </Button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
+                        >
+                            <MoreVertical className="w-6 h-6" />
+                        </button>
+                        {isMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden">
+                                    <button
+                                        onClick={() => navigate(`/routine/${id}/edit`)}
+                                        className="w-full px-4 py-3 text-left text-white hover:bg-white/5 flex items-center gap-3"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        Edit Routine
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="w-full px-4 py-3 text-left text-red-500 hover:bg-red-500/10 flex items-center gap-3"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete Routine
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Chart Card */}

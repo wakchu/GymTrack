@@ -6,6 +6,7 @@ interface RoutineContextType {
     routines: Routine[];
     addRoutine: (routine: Routine) => Promise<void>;
     updateRoutine: (routine: Routine) => Promise<void>;
+    deleteRoutine: (id: string) => Promise<void>;
     loading: boolean;
 }
 
@@ -163,8 +164,55 @@ export const RoutineProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
+    const deleteRoutine = async (id: string) => {
+        try {
+            // 1. Get all exercises for this routine to delete their logs
+            const { data: exercises, error: fetchError } = await supabase
+                .from('exercises')
+                .select('id')
+                .eq('routine_id', id);
+
+            if (fetchError) throw fetchError;
+
+            if (exercises && exercises.length > 0) {
+                const exerciseIds = exercises.map(e => e.id);
+
+                // 2. Delete workout logs for these exercises
+                const { error: logsError } = await supabase
+                    .from('workout_logs')
+                    .delete()
+                    .in('exercise_id', exerciseIds);
+
+                if (logsError) throw logsError;
+
+                // 3. Delete exercises
+                const { error: exercisesError } = await supabase
+                    .from('exercises')
+                    .delete()
+                    .eq('routine_id', id);
+
+                if (exercisesError) throw exercisesError;
+            }
+
+            // 4. Delete the routine itself
+            const { error: routineError } = await supabase
+                .from('routines')
+                .delete()
+                .eq('id', id);
+
+            if (routineError) throw routineError;
+
+            // Refresh local state
+            await fetchRoutines();
+        } catch (error) {
+            console.error('Error deleting routine:', error);
+            alert('Failed to delete routine');
+            throw error;
+        }
+    };
+
     return (
-        <RoutineContext.Provider value={{ routines, addRoutine, updateRoutine, loading }}>
+        <RoutineContext.Provider value={{ routines, addRoutine, updateRoutine, deleteRoutine, loading }}>
             {children}
         </RoutineContext.Provider>
     );
