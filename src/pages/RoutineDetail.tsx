@@ -266,7 +266,7 @@ export const RoutineDetail: React.FC = () => {
 
                 <Button className="w-full py-6 text-lg text-black" onClick={() => navigate(`/workout/${id}`)}>
                     <Play className="mr-2 w-5 h-5 fill-current" />
-                    Start Workout
+                    Register Workout
                 </Button>
 
                 <div>

@@ -13,6 +13,7 @@ export const WorkoutSession: React.FC = () => {
     // State
     const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
     const [completedSets, setCompletedSets] = useState<Record<string, number>>({});
+    const [sessionLogs, setSessionLogs] = useState<any[]>([]);
 
 
     // Input State
@@ -56,10 +57,13 @@ export const WorkoutSession: React.FC = () => {
 
         const setsDone = completedSets[currentExercise.id] || 0;
         const currentSetNumber = setsDone + 1;
+        const totalSets = Number(currentExercise.sets) || 3;
+        const isLastExercise = currentExerciseIndex === routine.exercises.length - 1;
+        const isLastSet = currentSetNumber >= totalSets;
 
         try {
             // Save log to Supabase
-            const { error } = await supabase
+            const { data: newLog, error } = await supabase
                 .from('workout_logs')
                 .insert({
                     routine_id: routine.id,
@@ -67,7 +71,9 @@ export const WorkoutSession: React.FC = () => {
                     weight: Number(weight) || 0,
                     reps: Number(reps) || 0,
                     set_number: currentSetNumber
-                });
+                })
+                .select()
+                .single();
 
             if (error) throw error;
 
@@ -77,9 +83,18 @@ export const WorkoutSession: React.FC = () => {
                 [currentExercise.id]: (prev[currentExercise.id] || 0) + 1
             }));
 
-            // Logic to move to next set or exercise
-            const totalSets = Number(currentExercise.sets) || 3;
+            // Add to session logs
+            if (newLog) {
+                setSessionLogs(prev => [...prev, newLog]);
+            }
 
+            if (isLastSet && isLastExercise) {
+                alert('Workout Complete!');
+                navigate('/');
+                return;
+            }
+
+            // Logic to move to next set or exercise
             if (currentSetNumber < totalSets) {
                 // Stay on current exercise for next set
             } else {
@@ -87,9 +102,6 @@ export const WorkoutSession: React.FC = () => {
                 if (currentExerciseIndex < routine.exercises.length - 1) {
                     // Next Exercise
                     setCurrentExerciseIndex(prev => prev + 1);
-                } else {
-                    // Workout Complete (all exercises done)
-                    // We don't auto-finish anymore, user must click Finish
                 }
             }
         } catch (err) {
@@ -136,6 +148,12 @@ export const WorkoutSession: React.FC = () => {
     }
 
     const totalSets = Number(currentExercise.sets) || 0;
+    const setsDone = completedSets[currentExercise.id] || 0;
+    const isLastSet = setsDone + 1 >= totalSets;
+    const isLastExercise = currentExerciseIndex === routine.exercises.length - 1;
+
+    // Filter logs for current exercise
+    const currentExerciseLogs = sessionLogs.filter(log => log.exercise_id === currentExercise.id);
 
     return (
         <div className="min-h-screen bg-background-dark text-white flex flex-col p-4 relative">
@@ -216,9 +234,26 @@ export const WorkoutSession: React.FC = () => {
                 <div className="flex-grow" />
 
                 <div className="flex flex-col gap-4 pt-8 pb-4">
+                    {/* Session History */}
+                    {currentExerciseLogs.length > 0 && (
+                        <div className="bg-black/20 rounded-lg p-4 mb-4">
+                            <h3 className="text-sm font-medium text-white/60 mb-2">Current Session</h3>
+                            <div className="space-y-2">
+                                {currentExerciseLogs.map((log, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span className="text-white">Set {log.set_number}</span>
+                                        <span className="text-primary">{log.weight}kg x {log.reps}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                    <Button className="h-16 text-lg text-black" onClick={handleCompleteSet}>
-                        Complete Set
+                    <Button
+                        className={`h-16 text-lg ${isLastSet && isLastExercise ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-black'}`}
+                        onClick={handleCompleteSet}
+                    >
+                        {isLastSet && isLastExercise ? 'Save Routine' : 'Complete Set'}
                     </Button>
                 </div>
             </div>
